@@ -12,6 +12,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 import settings
 import elements as el
+import logic
+from support import line
+
 
 logger = logging.getLogger(__name__)
 
@@ -84,3 +87,19 @@ class Driver(object):
             'score_1': self._get_elements(el.lavel_score_1),
             'score_2': self._get_elements(el.lavel_score_2)
         }
+
+    def get_current_url(self):
+        return self.driver.current_url
+
+    def send_valid_game(self, data):
+        url_list = []
+        for i in range(len(data['game_time'])):
+            result = logic.valid_game(
+                game_time=int(data['game_time'][i].text[:2]),
+                score_1=int(data['score_1'][i].text),
+                score_2=int(data['score_2'][i].text))
+            if result:
+                data['game_time'][i].click()
+                url_list.append(self.get_current_url())
+                sleep(1)
+        line.send_message(url_list)
