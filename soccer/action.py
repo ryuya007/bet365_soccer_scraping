@@ -5,7 +5,8 @@ import undetected_chromedriver.v2 as uc
 from selenium.common.exceptions import (ElementClickInterceptedException,
                                         NoSuchElementException,
                                         StaleElementReferenceException,
-                                        WebDriverException)
+                                        WebDriverException,
+                                        TimeoutException)
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -30,8 +31,8 @@ class Driver(object):
         return WebDriverWait(self.driver, 10).until(
             EC.visibility_of_element_located((By.XPATH, xpath)))
 
-    def _get_elements(self, xpath):
-        return WebDriverWait(self.driver, 10).until(
+    def _get_elements(self, xpath, limit=10):
+        return WebDriverWait(self.driver, limit).until(
             EC.visibility_of_all_elements_located((By.XPATH, xpath)))
 
     def _click_element(self, xpath):
@@ -43,7 +44,7 @@ class Driver(object):
             logger.warning(e)
             sleep(2)
             self._click_element(xpath)
-    
+
     def login(self):
         try:
             self._click_element(el.login_area)
@@ -59,14 +60,14 @@ class Driver(object):
             logger.info('action=login is succeeded!')
         except StaleElementReferenceException as e:
             logger.error(f'action=login is failed message={e}')
-            
+
     def first_step(self):
         self.login()
         sleep(3)
         self._click_element(el.in_play_btn)
         self._click_element(el.soccer_icon)
         self._click_element(el.top_game)
-    
+
     def open_all_leagues(self):
         try:
             closed_leagues = self._get_elements(el.closed_league)
@@ -79,6 +80,9 @@ class Driver(object):
             sleep(2)
             self.open_all_leagues()
 
+    def get_current_url(self):
+        return self.driver.current_url
+
     def get_game_lavel(self):
         return {
             'game_time': self._get_elements(el.lavel_game_time),
@@ -88,8 +92,16 @@ class Driver(object):
             'score_2': self._get_elements(el.lavel_score_2)
         }
 
-    def get_current_url(self):
-        return self.driver.current_url
+    def get_stats_info(self):
+        pass
+
+    def valid_bet_amg(self):
+        try:
+            count = len(self._get_elements(el.amg_count, limit=1))
+            result = logic.valid_game_for_amg(count)
+            return result
+        except TimeoutException:
+            return False
 
     def send_valid_game(self, data):
         url_list = []
@@ -100,6 +112,7 @@ class Driver(object):
                 score_2=int(data['score_2'][i].text))
             if result:
                 data['game_time'][i].click()
-                url_list.append(self.get_current_url())
-                sleep(1)
+                valid = self.valid_bet_amg()
+                if valid:
+                    url_list.append(self.get_current_url())
         line.send_message(url_list)
