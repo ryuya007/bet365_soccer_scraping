@@ -2,6 +2,7 @@ import logging
 from time import sleep
 
 import undetected_chromedriver.v2 as uc
+from selenium import webdriver
 from selenium.common.exceptions import (ElementClickInterceptedException,
                                         NoSuchElementException,
                                         StaleElementReferenceException,
@@ -23,31 +24,43 @@ logger = logging.getLogger(__name__)
 class Driver(object):
     
     def __init__(self):
-        self.driver = uc.Chrome()
+        options = webdriver.ChromeOptions()
+        options.add_argument('--user-data-dir=' + settings.profile_dir)
+        options.add_argument('--profile-directory=' + settings.profile)
+
+        self.driver = uc.Chrome(options=options)
         self.driver.get(settings.url)
         self.driver.set_window_size(1400, 1200)
 
-    def _get_element(self, xpath):
-        return WebDriverWait(self.driver, 10).until(
+    def _get_element(self, xpath, limit=10):
+        return WebDriverWait(self.driver, limit).until(
             EC.visibility_of_element_located((By.XPATH, xpath)))
 
     def _get_elements(self, xpath, limit=10):
         return WebDriverWait(self.driver, limit).until(
             EC.visibility_of_all_elements_located((By.XPATH, xpath)))
 
-    def _click_element(self, xpath):
+    def _click_element(self, xpath, limit=10, iterativel=True):
         try:
-            self._get_element(xpath).click()
+            self._get_element(xpath, limit).click()
             logger.info(f'action=_click_element is succeeded! xpath={xpath}')
         except WebDriverException as e:
             logger.warning(f'action=_click_element, xpath={xpath}')
             logger.warning(e)
-            sleep(2)
-            self._click_element(xpath)
+            if iterativel:
+                sleep(2)
+                self._click_element(xpath)
+            else:
+                return True
 
+    # bet365.com
     def login(self):
         try:
-            self._click_element(el.login_area)
+            login_status = self._click_element(el.login_area,
+                limit=3, iterativel=False)
+            if login_status:
+                logger.info('You are already logged in.')
+                return
             username = self._get_element(el.login_username)
             password = self._get_element(el.login_password)
 
@@ -68,6 +81,7 @@ class Driver(object):
         self._click_element(el.soccer_icon)
         self._click_element(el.top_game)
 
+    # bet365.com/#/IP/EV???????????C1
     def open_all_leagues(self):
         try:
             closed_leagues = self._get_elements(el.closed_league)
@@ -83,6 +97,7 @@ class Driver(object):
     def get_current_url(self):
         return self.driver.current_url
 
+    # bet365.com/#/IP/EV???????????C1
     def get_game_lavel(self):
         return {
             'game_time': self._get_elements(el.lavel_game_time),
@@ -93,7 +108,16 @@ class Driver(object):
         }
 
     def get_stats_info(self):
-        pass
+        attacks = [
+            self._get_element(el.attacks_1).text,
+            self._get_element(el.attacks_2).text
+        ]
+    
+        stats_info = {
+            'attacks': attacks
+        }
+
+        return stats_info
 
     def valid_bet_amg(self):
         try:
@@ -103,6 +127,7 @@ class Driver(object):
         except TimeoutException:
             return False
 
+    # bet365.com/#/IP/EV???????????C1
     def send_valid_game(self, data):
         url_list = []
         for i in range(len(data['game_time'])):
