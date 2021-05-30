@@ -1,4 +1,5 @@
 import logging
+from os import stat_result
 from time import sleep
 
 import undetected_chromedriver.v2 as uc
@@ -15,8 +16,22 @@ from selenium.webdriver.support.ui import WebDriverWait
 import settings
 import elements as el
 import logic
-from support import line
+from support import slack
 
+
+jquery = """
+document.body.appendChild((function() {
+    var jq = document.createElement('script')
+    jq.src = '//ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js'
+    return jq
+})())
+"""
+
+open_all_leagues_js = """
+$('.ipn-Competition-closed').each(function(index, element) {
+    element.click()
+})
+"""
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +47,8 @@ class Driver(object):
         self.driver.get(settings.url)
         self.driver.set_window_size(1400, 1200)
 
+        self.driver.execute_script(jquery)
+
     def _get_element(self, xpath, limit=10):
         return WebDriverWait(self.driver, limit).until(
             EC.visibility_of_element_located((By.XPATH, xpath)))
@@ -44,6 +61,7 @@ class Driver(object):
         try:
             self._get_element(xpath, limit).click()
             logger.info(f'action=_click_element is succeeded! xpath={xpath}')
+            return True
         except WebDriverException as e:
             logger.warning(f'action=_click_element, xpath={xpath}')
             logger.warning(e)
@@ -51,14 +69,23 @@ class Driver(object):
                 sleep(2)
                 self._click_element(xpath)
             else:
-                return True
+                return False
+
+    def get_current_url(self):
+        return self.driver.current_url
+
+    def create_new_window(self, url):
+        script = 'window.open("' + url + '")'
+        self.driver.execute_script(script)
+
+    def finish(self):
+        self.driver.close()
+        self.driver.quit()
 
     # bet365.com
     def login(self):
         try:
-            login_status = self._click_element(el.login_area,
-                limit=3, iterativel=False)
-            if login_status:
+            if not self._click_element(el.login_area, 3, False):
                 logger.info('You are already logged in.')
                 return
             username = self._get_element(el.login_username)
@@ -83,61 +110,121 @@ class Driver(object):
 
     # bet365.com/#/IP/EV???????????C1
     def open_all_leagues(self):
-        try:
-            closed_leagues = self._get_elements(el.closed_league)
-            for i in range(len(closed_leagues)):
-                closed_leagues[i].click()
-            logger.info('action=open_all_leagues is succeeded!')
-        except NoSuchElementException:
-            logger.info('action=open_all_leagues not exist')
-        except WebDriverException:
-            sleep(2)
-            self.open_all_leagues()
+        self.driver.execute_script(open_all_leagues_js)
+        logger.info('action=open_all_leagues is succeeded!')
 
-    def get_current_url(self):
-        return self.driver.current_url
-
-    # bet365.com/#/IP/EV???????????C1
+    # bet365.com/#/IP/EV???????????C1 > lavel
     def get_game_lavel(self):
         return {
             'game_time': self._get_elements(el.lavel_game_time),
             'team_name_1': self._get_elements(el.team_name_1),
             'team_name_2': self._get_elements(el.team_name_2),
             'score_1': self._get_elements(el.lavel_score_1),
-            'score_2': self._get_elements(el.lavel_score_2)
-        }
+            'score_2': self._get_elements(el.lavel_score_2)}
 
-    def get_stats_info(self):
+    # bet365.com/#/IP/EV???????????C1 > status and summary
+    def get_game_detail_info(self):
+        # stats info
+        if not self._click_element(el.stats, 3, False):
+            return None
+        sleep(0.5)
         attacks = [
-            self._get_element(el.attacks_1).text,
-            self._get_element(el.attacks_2).text
-        ]
-    
-        stats_info = {
-            'attacks': attacks
-        }
-
-        return stats_info
-
-    def valid_bet_amg(self):
+            int(self._get_element(el.attacks_1).text),
+            int(self._get_element(el.attacks_2).text)]
+        d_attacks = [
+            int(self._get_element(el.d_attacks_1).text),
+            int(self._get_element(el.d_attacks_2).text)]
         try:
-            count = len(self._get_elements(el.amg_count, limit=1))
-            result = logic.valid_game_for_amg(count)
-            return result
+            possessions = [
+                int(self._get_element(el.possession_1).text),
+                int(self._get_element(el.possession_2).text)]
+        except TimeoutException:
+            possessions = [50, 50]
+        yellow_card = [
+            int(self._get_element(el.yellow_card_1).text),
+            int(self._get_element(el.yellow_card_2).text)]
+        red_card = [
+            int(self._get_element(el.red_card_1).text),
+            int(self._get_element(el.red_card_2).text)]
+        corner_kick = [
+            int(self._get_element(el.corner_kick_1).text),
+            int(self._get_element(el.corner_kick_2).text)]
+        on_target = [
+            int(self._get_element(el.on_target_1).text),
+            int(self._get_element(el.on_target_2).text)]
+        off_target = [
+            int(self._get_element(el.off_target_1).text),
+            int(self._get_element(el.off_target_2).text)]
+
+        # summary info
+        self._click_element(el.summary)
+        time = int(self._get_element(el.game_time).text[:2])
+        number_of_shifts = [
+            int(self._get_element(el.number_of_shifts_1).text),
+            int(self._get_element(el.number_of_shifts_2).text)]
+        pk = [
+            int(self._get_element(el.pk_1).text),
+            int(self._get_element(el.pk_2).text)]
+        goal = [
+            int(self._get_element(el.goal_1).text),
+            int(self._get_element(el.goal_2).text)]
+
+        return {
+            'time': time,
+            'attacks': attacks,
+            'd_attacks': d_attacks,
+            'possession': possessions,
+            'yellow_card': yellow_card,
+            'red_card': red_card,
+            'corner_kick': corner_kick,
+            'on_target': on_target,
+            'off_target': off_target,
+            'number_of_shifts': number_of_shifts,
+            'pk': pk,
+            'goal': goal}
+
+    def click_game_lavel(self, box):
+        count = 0
+        try:
+            box.click()
+            return True
+        except NoSuchElementException:
+            return False
         except TimeoutException:
             return False
+        except ElementClickInterceptedException:
+            if count > 5:
+                return False
+            count += 1
+            self.click_game_lavel(box)
+
+    def check_amg(self):
+        try:
+            count = len(self._get_elements(el.amg_count, limit=1))
+        except TimeoutException:
+            return False
+        if logic.exists_amg(count):
+            data = self.get_game_detail_info()
+            if logic.can_bet_amg(data):
+                return True
+        return False
 
     # bet365.com/#/IP/EV???????????C1
     def send_valid_game(self, data):
-        url_list = []
+        can_not_bet = True
         for i in range(len(data['game_time'])):
-            result = logic.valid_game(
+            # Check number of golas and game time
+            valid = logic.valid_game(
                 game_time=int(data['game_time'][i].text[:2]),
                 score_1=int(data['score_1'][i].text),
                 score_2=int(data['score_2'][i].text))
-            if result:
-                data['game_time'][i].click()
-                valid = self.valid_bet_amg()
-                if valid:
-                    url_list.append(self.get_current_url())
-        line.send_message(url_list)
+            if valid and self.click_game_lavel(data['game_time'][i]):
+                if self.check_amg():
+                    current_url = self.get_current_url()
+                    self.create_new_window(current_url)
+                    slack.send_message(current_url)
+                    can_not_bet = False
+        if can_not_bet:
+            logger.info('There are no games to bet on.')
+        else:
+            slack.send_message('🔼 Games which you can bet. 🔼')
