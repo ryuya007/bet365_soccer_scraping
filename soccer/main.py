@@ -34,6 +34,5 @@ if __name__ == '__main__':
     # text code
     # driver = action.Driver()
     # driver.first_step()
-    # sleep(10)
-    # data = driver.get_game_detail_info()
-    # pprint(data)
+    # sleep(15)
+    # print(driver.get_goal_time())

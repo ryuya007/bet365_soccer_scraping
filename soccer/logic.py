@@ -26,8 +26,8 @@ OFF_TARGET_LIMIT = 12
 PK_LIMIT = 0
 
 
-def valid_game(game_time, score_1, score_2):
-    if GAME_START_TIME <= game_time <= GAME_END_TIME:
+def valid_game(play_time, score_1, score_2):
+    if GAME_START_TIME <= play_time <= GAME_END_TIME:
         if score_1 + score_2 <= 3 and score_1 != 3 and score_2 != 3:
             return True
     return False
@@ -40,7 +40,7 @@ def exists_amg(count):
 def can_bet_amg(data):
     """
     parameter
-        game_time: 63
+        play_time: 63
         attacks: [78, 69]
         d_attacks: [44, 38]
         possession: [48, 52]

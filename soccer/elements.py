@@ -15,7 +15,7 @@ top_game = '//div[contains(@class, "ovm-CompetitionList")]/div[1]/div[contains(@
 closed_league = '//div[contains(@class, "ipn-Competition-closed")]'
 
 # game lavel
-lavel_game_time = '//div[contains(@class, "ipn-Fixture_TimerContainer")]'
+lavel_play_time = '//div[contains(@class, "ipn-Fixture_TimerContainer")]'
 team_name_1 = '//div[contains(@class, "ipn-Fixture_TeamStack")]/div[1]'
 team_name_2 = '//div[contains(@class, "ipn-Fixture_TeamStack")]/div[2]'
 lavel_score_1 = '//div[contains(@class, "ipn-ScoresDefault_Score")]/div[1]'
@@ -46,10 +46,13 @@ off_target_2 = '//div[contains(@class, "ml1-StatsLower_MiniBarsCollection")]/div
 
 # summary info
 summary = '//div[contains(@class, "ml-StatButtons_Button-summary")]'
-game_time = '//time[contains(@class, "ml-Timeline_Time")]'
+show_more = '//div[contains(@class, "ml-Summary_Link")]'
+play_time = '//time[contains(@class, "ml-Timeline_Time")]'
 number_of_shifts_1 = '//div[contains(@class, "ml1-StatBoardColumn_Icon-9")]/following-sibling::div[1]'
 number_of_shifts_2 = '//div[contains(@class, "ml1-StatBoardColumn_Icon-9")]/following-sibling::div[2]'
 pk_1 = '//div[contains(@class, "ml1-StatBoardColumn_Icon-8")]/following-sibling::div[1]'
 pk_2 = '//div[contains(@class, "ml1-StatBoardColumn_Icon-8")]/following-sibling::div[2]'
 goal_1 = '//div[contains(@class, "ml1-StatBoardColumn_Icon-1")]/following-sibling::div[1]'
 goal_2 = '//div[contains(@class, "ml1-StatBoardColumn_Icon-1")]/following-sibling::div[2]'
+home_goals = '//div[contains(@class, "ml-SummaryRow_TextIcon-1")]/span[contains(@class, "ml1-SoccerSummaryRow_GoalText")]/../following-sibling::div[1]'
+away_goals = '//div[contains(@class, "ml-SummaryRow_TextIcon-2")]/span[contains(@class, "ml1-SoccerSummaryRow_GoalText")]/../preceding-sibling::div[1]'

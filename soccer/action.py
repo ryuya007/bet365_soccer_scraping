@@ -1,4 +1,5 @@
 import logging
+import traceback
 from os import stat_result
 from time import sleep
 
@@ -24,13 +25,13 @@ document.body.appendChild((function() {
     var jq = document.createElement('script')
     jq.src = '//ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js'
     return jq
-})())
+})());
 """
 
 open_all_leagues_js = """
 $('.ipn-Competition-closed').each(function(index, element) {
     element.click()
-})
+});
 """
 
 logger = logging.getLogger(__name__)
@@ -43,26 +44,33 @@ class Driver(object):
         options.add_argument('--user-data-dir=' + settings.profile_dir)
         options.add_argument('--profile-directory=' + settings.profile)
 
+        uc.TARGET_VERSION = 91
         self.driver = uc.Chrome(options=options)
         self.driver.get(settings.url)
         self.driver.set_window_size(1400, 1200)
 
-        self.driver.execute_script(jquery)
-
     def _get_element(self, xpath, limit=10):
-        return WebDriverWait(self.driver, limit).until(
-            EC.visibility_of_element_located((By.XPATH, xpath)))
+        try:
+            return WebDriverWait(self.driver, limit).until(
+                EC.visibility_of_element_located((By.XPATH, xpath)))
+        except TimeoutException:
+            logger.warning('action=_get_elements is TimeoutException')
+            return None
 
     def _get_elements(self, xpath, limit=10):
-        return WebDriverWait(self.driver, limit).until(
-            EC.visibility_of_all_elements_located((By.XPATH, xpath)))
+        try:
+            return WebDriverWait(self.driver, limit).until(
+                EC.visibility_of_all_elements_located((By.XPATH, xpath)))
+        except TimeoutException:
+            logger.warning('action=_get_elements is TimeoutException')
+            return None
 
     def _click_element(self, xpath, limit=10, iterativel=True):
         try:
             self._get_element(xpath, limit).click()
             logger.info(f'action=_click_element is succeeded! xpath={xpath}')
             return True
-        except WebDriverException as e:
+        except (WebDriverException, TimeoutException) as e:
             logger.warning(f'action=_click_element, xpath={xpath}')
             logger.warning(e)
             if iterativel:
@@ -110,13 +118,14 @@ class Driver(object):
 
     # bet365.com/#/IP/EV???????????C1
     def open_all_leagues(self):
+        self.driver.execute_script(jquery)
         self.driver.execute_script(open_all_leagues_js)
         logger.info('action=open_all_leagues is succeeded!')
 
     # bet365.com/#/IP/EV???????????C1 > lavel
     def get_game_lavel(self):
         return {
-            'game_time': self._get_elements(el.lavel_game_time),
+            'play_time': self._get_elements(el.lavel_play_time),
             'team_name_1': self._get_elements(el.team_name_1),
             'team_name_2': self._get_elements(el.team_name_2),
             'score_1': self._get_elements(el.lavel_score_1),
@@ -158,7 +167,7 @@ class Driver(object):
 
         # summary info
         self._click_element(el.summary)
-        time = int(self._get_element(el.game_time).text[:2])
+        time = int(self._get_element(el.play_time).text[:2])
         number_of_shifts = [
             int(self._get_element(el.number_of_shifts_1).text),
             int(self._get_element(el.number_of_shifts_2).text)]
@@ -182,6 +191,25 @@ class Driver(object):
             'number_of_shifts': number_of_shifts,
             'pk': pk,
             'goal': goal}
+
+    def get_goal_time(self):
+        self._click_element(el.show_more, limit=0.2, iterativel=False)
+
+        home_goals = self._get_elements(el.home_goals, limit=0.2)
+        away_goals = self._get_elements(el.away_goals, limit=0.2)
+
+        goal_time = {'home_goal': [], 'away_goal': []}
+        if home_goals:
+            for i in range(len(home_goals)):
+                goal_time['home_goal'].append(
+                    eval(home_goals[i].text.replace("'", '')))
+        if away_goals:
+            for i in range(len(away_goals)):
+                goal_time['away_goal'].append(
+                    eval(away_goals[i].text.replace("'", '')))
+        if goal_time['home_goal'] or goal_time['away_goal']:
+            return goal_time
+        return None
 
     def click_game_lavel(self, box):
         count = 0
@@ -212,18 +240,23 @@ class Driver(object):
     # bet365.com/#/IP/EV???????????C1
     def send_valid_game(self, data):
         can_not_bet = True
-        for i in range(len(data['game_time'])):
-            # Check number of golas and game time
-            valid = logic.valid_game(
-                game_time=int(data['game_time'][i].text[:2]),
-                score_1=int(data['score_1'][i].text),
-                score_2=int(data['score_2'][i].text))
-            if valid and self.click_game_lavel(data['game_time'][i]):
-                if self.check_amg():
-                    current_url = self.get_current_url()
-                    self.create_new_window(current_url)
-                    slack.send_message(current_url)
-                    can_not_bet = False
+        for i in range(len(data['play_time'])):
+            try:
+                # Check number of golas and game time
+                valid = logic.valid_game(
+                    play_time=int(data['play_time'][i].text[:2]),
+                    score_1=int(data['score_1'][i].text),
+                    score_2=int(data['score_2'][i].text))
+                if valid and self.click_game_lavel(data['play_time'][i]):
+                    if self.check_amg():
+                        current_url = self.get_current_url()
+                        self.create_new_window(current_url)
+                        slack.send_message(current_url)
+                        can_not_bet = False
+            except (StaleElementReferenceException, IndexError) as e:
+                logging.warning(traceback.format_exc())
+                logger.warning(f'send_valid_game is error, message={e}')
+                continue
         if can_not_bet:
             logger.info('There are no games to bet on.')
         else:
