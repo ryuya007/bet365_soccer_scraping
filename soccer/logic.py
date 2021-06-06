@@ -49,9 +49,10 @@ def can_bet_amg(data):
         corner_kick: [5, 3]
         on_target: [2, 4]
         off_target: [8, 6]
-        number_of_shifts: [4, 1]
+        shifts: [4, 1]
         pk: [1, 0]
         goal: [2, 1]
+        goal_time: [[23, 44], [69]]
     """
     if data is None:
         return False

@@ -23,7 +23,7 @@ lavel_score_2 = '//div[contains(@class, "ipn-ScoresDefault_Score")]/div[2]'
 
 # soccer game bet type
 amg = '//div[contains(text(), "Alternative Match Goals")]'
-amg_count = '//div[contains(text(), "Alternative Match Goals")]/parent::node()/following-sibling::div[1]/div/div/div[contains(@class, "srb-ParticipantLabelCentered")]'
+all_amg_under = '//div[contains(text(), "Alternative Match Goals")]/parent::node()/following-sibling::div[1]/div/div/div[contains(@class, "srb-ParticipantLabelCentered")]'
 
 # stats info
 stats = '//div[contains(@class, "ml-StatButtons_Button-stats")]'
@@ -48,8 +48,8 @@ off_target_2 = '//div[contains(@class, "ml1-StatsLower_MiniBarsCollection")]/div
 summary = '//div[contains(@class, "ml-StatButtons_Button-summary")]'
 show_more = '//div[contains(@class, "ml-Summary_Link")]'
 play_time = '//time[contains(@class, "ml-Timeline_Time")]'
-number_of_shifts_1 = '//div[contains(@class, "ml1-StatBoardColumn_Icon-9")]/following-sibling::div[1]'
-number_of_shifts_2 = '//div[contains(@class, "ml1-StatBoardColumn_Icon-9")]/following-sibling::div[2]'
+shifts_1 = '//div[contains(@class, "ml1-StatBoardColumn_Icon-9")]/following-sibling::div[1]'
+shifts_2 = '//div[contains(@class, "ml1-StatBoardColumn_Icon-9")]/following-sibling::div[2]'
 pk_1 = '//div[contains(@class, "ml1-StatBoardColumn_Icon-8")]/following-sibling::div[1]'
 pk_2 = '//div[contains(@class, "ml1-StatBoardColumn_Icon-8")]/following-sibling::div[2]'
 goal_1 = '//div[contains(@class, "ml1-StatBoardColumn_Icon-1")]/following-sibling::div[1]'

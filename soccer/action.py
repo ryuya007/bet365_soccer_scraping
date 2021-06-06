@@ -1,37 +1,29 @@
 import logging
 import traceback
-from os import stat_result
 from time import sleep
 
 import undetected_chromedriver.v2 as uc
 from selenium import webdriver
 from selenium.common.exceptions import (ElementClickInterceptedException,
+                                        JavascriptException,
                                         NoSuchElementException,
                                         StaleElementReferenceException,
-                                        WebDriverException,
-                                        TimeoutException)
+                                        TimeoutException, WebDriverException)
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-import settings
 import elements as el
 import logic
-from support import slack
-
-
-jquery = """
-document.body.appendChild((function() {
-    var jq = document.createElement('script')
-    jq.src = '//ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js'
-    return jq
-})());
-"""
+import settings
+from utils import output_csv, slack
 
 open_all_leagues_js = """
-$('.ipn-Competition-closed').each(function(index, element) {
-    element.click()
-});
+elements = document.getElementsByClassName('ipn-Competition-closed')
+count = elements.length
+for (let i = 0; i < count; i++) {
+    elements[0].click()
+}
 """
 
 logger = logging.getLogger(__name__)
@@ -49,7 +41,7 @@ class Driver(object):
         self.driver.get(settings.url)
         self.driver.set_window_size(1400, 1200)
 
-    def _get_element(self, xpath, limit=10):
+    def _get_element(self, xpath, limit=5):
         try:
             return WebDriverWait(self.driver, limit).until(
                 EC.visibility_of_element_located((By.XPATH, xpath)))
@@ -57,7 +49,7 @@ class Driver(object):
             logger.warning('action=_get_elements is TimeoutException')
             return None
 
-    def _get_elements(self, xpath, limit=10):
+    def _get_elements(self, xpath, limit=5):
         try:
             return WebDriverWait(self.driver, limit).until(
                 EC.visibility_of_all_elements_located((By.XPATH, xpath)))
@@ -65,30 +57,31 @@ class Driver(object):
             logger.warning('action=_get_elements is TimeoutException')
             return None
 
-    def _click_element(self, xpath, limit=10, iterativel=True):
-        try:
-            self._get_element(xpath, limit).click()
-            logger.info(f'action=_click_element is succeeded! xpath={xpath}')
-            return True
-        except (WebDriverException, TimeoutException) as e:
-            logger.warning(f'action=_click_element, xpath={xpath}')
-            logger.warning(e)
-            if iterativel:
-                sleep(2)
-                self._click_element(xpath)
-            else:
-                return False
+    def _click_element(self, xpath, limit=5, iterativel=5):
+        element = self._get_element(xpath, limit)
+        if element:
+            for _ in range(iterativel):
+                try:
+                    element.click()
+                    return True
+                except ElementClickInterceptedException:
+                    sleep(1)
+                    continue
+        return False
 
-    def get_current_url(self):
-        return self.driver.current_url
+    def _get_element_text(self, xpath):
+        element = self._get_element(xpath, limit=1)
+        if element:
+            text = element.text
+            try:
+                return int(text)
+            except ValueError:
+                return text
+        return None
 
     def create_new_window(self, url):
         script = 'window.open("' + url + '")'
         self.driver.execute_script(script)
-
-    def finish(self):
-        self.driver.close()
-        self.driver.quit()
 
     # bet365.com
     def login(self):
@@ -111,14 +104,15 @@ class Driver(object):
 
     def first_step(self):
         self.login()
-        sleep(3)
+        sleep(2)
         self._click_element(el.in_play_btn)
         self._click_element(el.soccer_icon)
+        sleep(2)
         self._click_element(el.top_game)
+        sleep(2)
 
     # bet365.com/#/IP/EV???????????C1
     def open_all_leagues(self):
-        self.driver.execute_script(jquery)
         self.driver.execute_script(open_all_leagues_js)
         logger.info('action=open_all_leagues is succeeded!')
 
@@ -138,48 +132,50 @@ class Driver(object):
             return None
         sleep(0.5)
         attacks = [
-            int(self._get_element(el.attacks_1).text),
-            int(self._get_element(el.attacks_2).text)]
+            self._get_element_text(el.attacks_1),
+            self._get_element_text(el.attacks_2)]
         d_attacks = [
-            int(self._get_element(el.d_attacks_1).text),
-            int(self._get_element(el.d_attacks_2).text)]
-        try:
-            possessions = [
-                int(self._get_element(el.possession_1).text),
-                int(self._get_element(el.possession_2).text)]
-        except TimeoutException:
-            possessions = [50, 50]
+            self._get_element_text(el.d_attacks_1),
+            self._get_element_text(el.d_attacks_2)]
+        possessions = [
+            self._get_element_text(el.possession_1),
+            self._get_element_text(el.possession_2)]
+        if not (possessions[0] and possessions[1]):
+           possessions = [50, 50]
         yellow_card = [
-            int(self._get_element(el.yellow_card_1).text),
-            int(self._get_element(el.yellow_card_2).text)]
+            self._get_element_text(el.yellow_card_1),
+            self._get_element_text(el.yellow_card_2)]
         red_card = [
-            int(self._get_element(el.red_card_1).text),
-            int(self._get_element(el.red_card_2).text)]
+            self._get_element_text(el.red_card_1),
+            self._get_element_text(el.red_card_2)]
         corner_kick = [
-            int(self._get_element(el.corner_kick_1).text),
-            int(self._get_element(el.corner_kick_2).text)]
+            self._get_element_text(el.corner_kick_1),
+            self._get_element_text(el.corner_kick_2)]
         on_target = [
-            int(self._get_element(el.on_target_1).text),
-            int(self._get_element(el.on_target_2).text)]
+            self._get_element_text(el.on_target_1),
+            self._get_element_text(el.on_target_2)]
         off_target = [
-            int(self._get_element(el.off_target_1).text),
-            int(self._get_element(el.off_target_2).text)]
+            self._get_element_text(el.off_target_1),
+            self._get_element_text(el.off_target_2)]
 
         # summary info
         self._click_element(el.summary)
-        time = int(self._get_element(el.play_time).text[:2])
-        number_of_shifts = [
-            int(self._get_element(el.number_of_shifts_1).text),
-            int(self._get_element(el.number_of_shifts_2).text)]
+        play_time = self._get_element_text(el.play_time)
+        shifts = [
+            self._get_element_text(el.shifts_1),
+            self._get_element_text(el.shifts_2)]
         pk = [
-            int(self._get_element(el.pk_1).text),
-            int(self._get_element(el.pk_2).text)]
+            self._get_element_text(el.pk_1),
+            self._get_element_text(el.pk_2)]
         goal = [
-            int(self._get_element(el.goal_1).text),
-            int(self._get_element(el.goal_2).text)]
+            self._get_element_text(el.goal_1),
+            self._get_element_text(el.goal_2)]
+
+        self._click_element(el.show_more, limit=0.2, iterativel=1)
+        goal_time = self.get_goal_time()
 
         return {
-            'time': time,
+            'play_time': play_time,
             'attacks': attacks,
             'd_attacks': d_attacks,
             'possession': possessions,
@@ -188,26 +184,23 @@ class Driver(object):
             'corner_kick': corner_kick,
             'on_target': on_target,
             'off_target': off_target,
-            'number_of_shifts': number_of_shifts,
+            'shifts': shifts,
             'pk': pk,
-            'goal': goal}
+            'goal': goal,
+            'goal_time': goal_time}
 
     def get_goal_time(self):
-        self._click_element(el.show_more, limit=0.2, iterativel=False)
-
         home_goals = self._get_elements(el.home_goals, limit=0.2)
         away_goals = self._get_elements(el.away_goals, limit=0.2)
 
-        goal_time = {'home_goal': [], 'away_goal': []}
+        goal_time = [[], []]
         if home_goals:
             for i in range(len(home_goals)):
-                goal_time['home_goal'].append(
-                    eval(home_goals[i].text.replace("'", '')))
+                goal_time[0].append(eval(home_goals[i].text.replace("'", '')))
         if away_goals:
             for i in range(len(away_goals)):
-                goal_time['away_goal'].append(
-                    eval(away_goals[i].text.replace("'", '')))
-        if goal_time['home_goal'] or goal_time['away_goal']:
+                goal_time[1].append(eval(away_goals[i].text.replace("'", '')))
+        if goal_time[0] or goal_time[1]:
             return goal_time
         return None
 
@@ -218,8 +211,6 @@ class Driver(object):
             return True
         except NoSuchElementException:
             return False
-        except TimeoutException:
-            return False
         except ElementClickInterceptedException:
             if count > 5:
                 return False
@@ -227,11 +218,8 @@ class Driver(object):
             self.click_game_lavel(box)
 
     def check_amg(self):
-        try:
-            count = len(self._get_elements(el.amg_count, limit=1))
-        except TimeoutException:
-            return False
-        if logic.exists_amg(count):
+        amg_elements = self._get_elements(el.all_amg_under, limit=1)
+        if amg_elements and logic.exists_amg(len(amg_elements)):
             data = self.get_game_detail_info()
             if logic.can_bet_amg(data):
                 return True
@@ -249,7 +237,7 @@ class Driver(object):
                     score_2=int(data['score_2'][i].text))
                 if valid and self.click_game_lavel(data['play_time'][i]):
                     if self.check_amg():
-                        current_url = self.get_current_url()
+                        current_url = self.driver.current_url
                         self.create_new_window(current_url)
                         slack.send_message(current_url)
                         can_not_bet = False
@@ -260,4 +248,4 @@ class Driver(object):
         if can_not_bet:
             logger.info('There are no games to bet on.')
         else:
-            slack.send_message('🔼 Games which you can bet. 🔼')
+            slack.send_message('='*20)
