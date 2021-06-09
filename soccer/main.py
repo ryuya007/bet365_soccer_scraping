@@ -16,6 +16,8 @@ def bet365_bot():
         driver = action.Driver()
         driver.first_step()
         while True:
+            if driver.bet_status_check():
+                driver.watch_bet_game()
             driver.open_all_leagues()
             data = driver.get_game_lavel()
             driver.send_valid_game(data)
@@ -35,24 +37,3 @@ if __name__ == '__main__':
     # driver.first_step()
     # sleep(15)
     # print(driver.get_goal_time())
-
-
-    # from utils.output_csv import output_game_info
-
-    # data = {
-    #     'play_time': 63,
-    #     'attacks': [78, 69],
-    #     'd_attacks': [44, 38],
-    #     'possession': [48, 52],
-    #     'yellow_card': [2, 5],
-    #     'red_card': [0, 0],
-    #     'corner_kick': [5, 3],
-    #     'on_target': [2, 4],
-    #     'off_target': [8, 6],
-    #     'shifts': [4, 1],
-    #     'pk': [1, 0],
-    #     'goal': [2, 1],
-    #     'goal_time': [[23, 44], [69]]
-    # }
-    # output_game_info(data)
-

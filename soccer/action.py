@@ -86,7 +86,7 @@ class Driver(object):
     # bet365.com
     def login(self):
         try:
-            if not self._click_element(el.login_area, 3, False):
+            if not self._click_element(el.login_area, 3, 3):
                 logger.info('You are already logged in.')
                 return
             username = self._get_element(el.login_username)
@@ -110,6 +110,15 @@ class Driver(object):
         sleep(2)
         self._click_element(el.top_game)
         sleep(2)
+
+    def bet_status_check(self):
+        if self._get_element(el.bet_count):
+            self._click_element(el.my_bets_btn)
+            self._click_element(el.team_name)
+            self.league_name = self._get_element_text(el.selected_leagu_name)
+            self._click_element(el.my_bets_btn)
+            return True
+        return False
 
     # bet365.com/#/IP/EV???????????C1
     def open_all_leagues(self):
@@ -221,6 +230,7 @@ class Driver(object):
         amg_elements = self._get_elements(el.all_amg_under, limit=1)
         if amg_elements and logic.exists_amg(len(amg_elements)):
             data = self.get_game_detail_info()
+            output_csv.output_game_info(data)
             if logic.can_bet_amg(data):
                 return True
         return False
@@ -249,3 +259,26 @@ class Driver(object):
             logger.info('There are no games to bet on.')
         else:
             slack.send_message('='*20)
+
+    # bet365.com/#/MB/
+    def watch_bet_game(self):
+        data_1 = {
+            'league_name': self.league_name,
+            'home_team': self._get_element_text(el.home_team),
+            'away_team': self._get_element_text(el.away_team),
+            'how_to_bet': self._get_element_text(el.how_to_bet),
+            'odds': self._get_element_text(el.odds),
+            'stake': self._get_element_text(el.stake)
+        }
+
+        while True:
+            data_2 = self.get_game_detail_info()
+            data_2.update(data_1)
+            data_2.update({
+                'to_return': self._get_element_text(el.to_return),
+                'cash_out': self._get_element_text(el.cash_out)
+            })
+            output_csv.output_game_info(data_2)
+            sleep(300)
+            if not self._get_element(el.bet_count):
+                break

@@ -8,11 +8,24 @@ login_btn = '//div[contains(@class, "lms-StandardLogin_LoginButton")]'
 sports_btn = '//div[contains(@class, "hm-MainHeaderCentreWide_Link")]/div[contains(text(), "Sports")]'
 in_play_btn = '//div[contains(@class, "hm-MainHeaderCentreWide_Link")]/div[contains(text(), "In-Play")]'
 my_bets_btn = '//div[contains(@class, "hm-MainHeaderCentreWide_Link")]/div[contains(text(), "My Bets")]'
+bet_count = '//span[contains(@class, "hm-HeaderMenuItemMyBets_MyBetsCount")]'
 
 # in-play >
 soccer_icon = '//div[contains(@class, "cil-ClassificationIconLarge-1")]'
 top_game = '//div[contains(@class, "ovm-CompetitionList")]/div[1]/div[contains(@class, "ovm-FixtureList")]/div[1]/div/div[contains(@class, "ovm-FixtureDetailsTwoWay")]'
 closed_league = '//div[contains(@class, "ipn-Competition-closed")]'
+selected_leagu_name = '//div[contains(@class, "ipn-Fixture ipn-Fixture-selected")]/../../div[1]/div/div'
+
+# my bets
+team_name = '//div[contains(@class, "myb-BetParticipant_FixtureName")]'
+home_team = '//div[contains(@class, "lsb-ScoreBasedScoreboard")]/div[1]/div'
+away_team = '//div[contains(@class, "lsb-ScoreBasedScoreboard")]/div[3]/div'
+how_to_bet = '//span[contains(@class, "myb-BetParticipant_ParticipantSpan")]'
+odds = '//div[contains(@class, "myb-BetParticipant_HeaderOdds")]'
+stake = '//div[contains(@class, "myd-StakeDisplay_StakeWrapper")]'
+to_return = '//div[contains(@class, "myb-OpenBetItemInnerView_BetInformationText")]'
+#####
+cash_out = 'div/div[contains(@class, "myb-CloseBetButtonBase_Return")]'
 
 # game lavel
 lavel_play_time = '//div[contains(@class, "ipn-Fixture_TimerContainer")]'
@@ -47,7 +60,7 @@ off_target_2 = '//div[contains(@class, "ml1-StatsLower_MiniBarsCollection")]/div
 # summary info
 summary = '//div[contains(@class, "ml-StatButtons_Button-summary")]'
 show_more = '//div[contains(@class, "ml-Summary_Link")]'
-play_time = '//time[contains(@class, "ml-Timeline_Time")]'
+play_time = '//span[contains(@class, "ml1-SoccerClock_Clock")]'
 shifts_1 = '//div[contains(@class, "ml1-StatBoardColumn_Icon-9")]/following-sibling::div[1]'
 shifts_2 = '//div[contains(@class, "ml1-StatBoardColumn_Icon-9")]/following-sibling::div[2]'
 pk_1 = '//div[contains(@class, "ml1-StatBoardColumn_Icon-8")]/following-sibling::div[1]'
