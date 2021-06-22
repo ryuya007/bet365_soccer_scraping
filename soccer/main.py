@@ -26,7 +26,7 @@ def bet365_bot():
     except Exception as e:
         logging.error(traceback.format_exc())
         logging.error(f'message={e}')
-        sleep(300)
+        sleep(120)
 
 
 if __name__ == '__main__':

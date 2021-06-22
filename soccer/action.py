@@ -47,6 +47,7 @@ class Driver(object):
                 EC.visibility_of_element_located((By.XPATH, xpath)))
         except TimeoutException:
             logger.warning('action=_get_elements is TimeoutException')
+            logger.warning(f'xpath={xpath}')
             return None
 
     def _get_elements(self, xpath, limit=5):
@@ -55,18 +56,19 @@ class Driver(object):
                 EC.visibility_of_all_elements_located((By.XPATH, xpath)))
         except TimeoutException:
             logger.warning('action=_get_elements is TimeoutException')
+            logger.warning(f'xpath={xpath}')
             return None
 
     def _click_element(self, xpath, limit=5, iterativel=5):
-        element = self._get_element(xpath, limit)
-        if element:
-            for _ in range(iterativel):
+        for _ in range(iterativel):
+            element = self._get_element(xpath, limit)
+            if element:
                 try:
                     element.click()
                     return True
-                except ElementClickInterceptedException:
+                except (ElementClickInterceptedException,
+                        StaleElementReferenceException):
                     sleep(1)
-                    continue
         return False
 
     def _get_element_text(self, xpath):
@@ -77,6 +79,13 @@ class Driver(object):
                 return int(text)
             except ValueError:
                 return text
+        return None
+
+    def _get_elements_text(self, xpath):
+        elements = self._get_elements(xpath, limit=1)
+        if elements:
+            text_list = [e.text for e in elements]
+            return text_list
         return None
 
     def create_new_window(self, url):
@@ -127,18 +136,21 @@ class Driver(object):
 
     # bet365.com/#/IP/EV???????????C1 > lavel
     def get_game_lavel(self):
+        elements = self._get_elements(el.lavel_play_time)
+        play_times = [e.text[:2] for e in elements]
+
         return {
-            'play_time': self._get_elements(el.lavel_play_time),
-            'team_name_1': self._get_elements(el.team_name_1),
-            'team_name_2': self._get_elements(el.team_name_2),
-            'score_1': self._get_elements(el.lavel_score_1),
-            'score_2': self._get_elements(el.lavel_score_2)}
+            'lavel': self._get_elements(el.lavel),
+            'play_time': play_times,
+            'team_name_1': self._get_elements_text(el.team_name_1),
+            'team_name_2': self._get_elements_text(el.team_name_2),
+            'score_1': self._get_elements_text(el.lavel_score_1),
+            'score_2': self._get_elements_text(el.lavel_score_2)}
 
     # bet365.com/#/IP/EV???????????C1 > status and summary
     def get_game_detail_info(self):
         # stats info
-        if not self._click_element(el.stats, 3, False):
-            return None
+        self._click_element(el.stats)
         sleep(0.5)
         attacks = [
             self._get_element_text(el.attacks_1),
@@ -230,7 +242,6 @@ class Driver(object):
         amg_elements = self._get_elements(el.all_amg_under, limit=1)
         if amg_elements and logic.exists_amg(len(amg_elements)):
             data = self.get_game_detail_info()
-            output_csv.output_game_info(data)
             if logic.can_bet_amg(data):
                 return True
         return False
@@ -238,14 +249,14 @@ class Driver(object):
     # bet365.com/#/IP/EV???????????C1
     def send_valid_game(self, data):
         can_not_bet = True
-        for i in range(len(data['play_time'])):
+        for i in range(len(data['lavel'])):
             try:
                 # Check number of golas and game time
                 valid = logic.valid_game(
-                    play_time=int(data['play_time'][i].text[:2]),
-                    score_1=int(data['score_1'][i].text),
-                    score_2=int(data['score_2'][i].text))
-                if valid and self.click_game_lavel(data['play_time'][i]):
+                    play_time=int(data['play_time'][i]),
+                    score_1=int(data['score_1'][i]),
+                    score_2=int(data['score_2'][i]))
+                if valid and self.click_game_lavel(data['lavel'][i]):
                     if self.check_amg():
                         current_url = self.driver.current_url
                         self.create_new_window(current_url)
@@ -253,7 +264,7 @@ class Driver(object):
                         can_not_bet = False
             except (StaleElementReferenceException, IndexError) as e:
                 logging.warning(traceback.format_exc())
-                logger.warning(f'send_valid_game is error, message={e}')
+                logger.warning(f'send_valid_game is failed, {e}')
                 continue
         if can_not_bet:
             logger.info('There are no games to bet on.')

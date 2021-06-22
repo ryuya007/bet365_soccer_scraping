@@ -3,5 +3,4 @@
 venv
 __pycache__
 settings.py
-*test*
 data

@@ -28,6 +28,7 @@ to_return = '//div[contains(@class, "myb-OpenBetItemInnerView_BetInformationText
 cash_out = 'div/div[contains(@class, "myb-CloseBetButtonBase_Return")]'
 
 # game lavel
+lavel = '//div[contains(@class, "ipn-Fixture_TimerContainer")]/../..'
 lavel_play_time = '//div[contains(@class, "ipn-Fixture_TimerContainer")]'
 team_name_1 = '//div[contains(@class, "ipn-Fixture_TeamStack")]/div[1]'
 team_name_2 = '//div[contains(@class, "ipn-Fixture_TeamStack")]/div[2]'
