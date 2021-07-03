@@ -243,12 +243,14 @@ class Driver(object):
         if amg_elements and logic.exists_amg(len(amg_elements)):
             data = self.get_game_detail_info()
             if logic.can_bet_amg(data):
+                logger.info(data)
                 return True
         return False
 
     # bet365.com/#/IP/EV???????????C1
     def send_valid_game(self, data):
         can_not_bet = True
+        urls = []
         for i in range(len(data['lavel'])):
             try:
                 # Check number of golas and game time
@@ -260,7 +262,7 @@ class Driver(object):
                     if self.check_amg():
                         current_url = self.driver.current_url
                         self.create_new_window(current_url)
-                        slack.send_message(current_url)
+                        urls.append(current_url)
                         can_not_bet = False
             except (StaleElementReferenceException, IndexError) as e:
                 logging.warning(traceback.format_exc())
@@ -269,7 +271,7 @@ class Driver(object):
         if can_not_bet:
             logger.info('There are no games to bet on.')
         else:
-            slack.send_message('='*20)
+            slack.send_message(urls)
 
     # bet365.com/#/MB/
     def watch_bet_game(self):

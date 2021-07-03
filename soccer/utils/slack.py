@@ -4,7 +4,7 @@ import json
 import settings
 
 
-def send_message(message):
+def send_message(messages):
     requests.post(settings.slack_url, data=json.dumps({
-        'text' : message,
+        'text' : '\n'.join(messages),
     }))

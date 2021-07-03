@@ -87,8 +87,8 @@ def can_bet_amg(data):
         ON_TARGET_LIMIT < on_1 + on_2:
         return False
 
-    off_1 = data['on_target'][0]
-    off_2 = data['on_target'][1]
+    off_1 = data['off_target'][0]
+    off_2 = data['off_target'][1]
     if (off_1 == 0 and off_2 == 0) or OFF_TARGET_DIFF < abs(off_1 - off_2) or \
         OFF_TARGET_LIMIT < off_1 + off_2:
         return False

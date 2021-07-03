@@ -1,5 +1,4 @@
-
-.vscode
+.idea
 venv
 __pycache__
 settings.py
